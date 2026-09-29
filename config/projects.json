@@ -45,5 +45,20 @@
     "snapshots": [
       "/"
     ]
+  },
+  "test": {
+    "source": "https://github.com/msolehin/test.git",
+    "remote": "git@github.com:msolehin/test.git",
+    "base": "main",
+    "type": "laravel",
+    "approve_plan": false,
+    "push": true,
+    "deps_from": "/var/www/ai-devbox/repos/_src/sandbox",
+    "tests": [
+      "php artisan test"
+    ],
+    "snapshots": [
+      "/"
+    ]
   }
 }
