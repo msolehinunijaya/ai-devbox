@@ -43,6 +43,7 @@ function summary(j) {
     id: j.id, project: j.project, prompt: j.prompt, state: j.state, stage: j.stage, message: j.message,
     created_at: j.created_at, elapsed_s: j.elapsed_s, eta_s: j.eta_s, progress: j.progress,
     preview_url: j.preview_url, verdict: j.verdict, queue: Ops.queuePosition(j), archived_at: j.archived_at || null,
+    tokens: Job.tokenCount(j.tokens?.total), cost_usd: j.tokens?.total.cost_usd || 0,
     tasks_done: j.tasks.filter((t) => t.state === 'done').length, tasks_total: j.tasks.length,
   };
 }
@@ -66,6 +67,14 @@ function job(id) {
 function usage(all) {
   const withUsage = all.filter((j) => j.usage?.five_hour != null).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
   return withUsage[0]?.usage || null;
+}
+
+// Tokens and API-price estimate of jobs started today (server time).
+function today(all) {
+  const day = new Date().toDateString();
+  const js = all.filter((j) => j.tokens && new Date(j.created_at).toDateString() === day);
+  return { jobs: js.length, tokens: js.reduce((s, j) => s + Job.tokenCount(j.tokens.total), 0),
+    cost_usd: js.reduce((s, j) => s + j.tokens.total.cost_usd, 0) };
 }
 
 async function body(req) {
@@ -109,7 +118,7 @@ async function route(req, res) {
     return send(200, {
       projects: projectNames().map((n) => { const p = project(n); return { name: n, type: p.type, approve_plan: !!p.approve_plan, push: !!p.push }; }),
       jobs: all.reverse().map(summary), max_jobs: MAX_JOBS, running: all.filter((j) => j.state === 'running').length,
-      usage: usage(all),
+      usage: usage(all), today: today(all),
     });
   }
   if (parts[1] !== 'jobs') throw new HttpError(404, 'Not found');

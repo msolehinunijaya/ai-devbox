@@ -101,6 +101,8 @@ const secs = (a, b) => (Date.parse(b || new Date().toISOString()) - Date.parse(a
 const STATE = { queued: 'Queued', running: 'Running', awaiting_approval: 'Needs approval', needs_you: 'Needs you', failed: 'Failed',
                 done: 'Done', cancelled: 'Cancelled', discarded: 'Discarded', interrupted: 'Interrupted' };
 const ACTIVE = ['queued', 'running'];
+const num = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n || 0);
+const tokTotal = (t) => t ? t.input + t.output + t.cache_read + t.cache_write : 0;
 const pill = (s, extra = '') => `<span class="pill s-${esc(s)}">${esc(STATE[s] || s)}${extra}</span>`;
 
 async function api(method, url, data) {
@@ -117,9 +119,10 @@ function toast(msg) {
 const last = {};
 function put(id, html) { if (last[id] === html) return; last[id] = html; const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
-function renderMeta(usage, running, max) {
+function renderMeta(usage, running, max, today) {
   const m = (label, v) => v == null ? '' : `<span class="meter hide-sm" title="Claude Max usage, ${label} window">${label} <i><b style="width:${Math.min(100, Math.round(v * 100))}%"></b></i> ${Math.round(v * 100)}%</span>`;
-  put('meta', `${m('5h', usage?.five_hour)}${m('7d', usage?.seven_day)}<span>${running}/${max} running</span>`);
+  const tk = today?.tokens ? `<span class="hide-sm" title="Tokens used by jobs started today; API-price estimate, not billed on Max">Today ${num(today.tokens)} tokens · ≈$${today.cost_usd.toFixed(2)}</span>` : '';
+  put('meta', `${tk}${m('5h', usage?.five_hour)}${m('7d', usage?.seven_day)}<span>${running}/${max} running</span>`);
 }
 
 // Minimal Markdown for report.md: headings, paragraphs, lists, tables, **bold**, `code`.
@@ -146,7 +149,7 @@ function md(src) {
 /* ---------- home ---------- */
 function jobCard(j) {
   const eta = ACTIVE.includes(j.state) && j.eta_s ? ` · ETA ~${dur(j.eta_s)}` : '';
-  const tasks = j.tasks_total ? ` · ${j.tasks_done}/${j.tasks_total} tasks` : '';
+  const tasks = (j.tasks_total ? ` · ${j.tasks_done}/${j.tasks_total} tasks` : '') + (j.tokens ? ` · ${num(j.tokens)} tokens` : '');
   const bar = ACTIVE.includes(j.state) || j.state === 'awaiting_approval' ? `<div class="bar"><b style="width:${Math.round((j.progress || 0) * 100)}%"></b></div>` : '';
   return `<a class="card job" href="#/job/${esc(j.id)}">
     <div class="row">${pill(j.state, j.queue ? ` #${j.queue}` : '')}${j.archived_at ? '<span class="pill">Archived</span>' : ''}<span class="muted">${esc(j.project)} · ${dur(j.elapsed_s)}${eta}${tasks}</span></div>
@@ -156,7 +159,7 @@ function jobCard(j) {
 
 async function home(first) {
   const st = await api('GET', '/api/state');
-  renderMeta(st.usage, st.running, st.max_jobs);
+  renderMeta(st.usage, st.running, st.max_jobs, st.today);
   document.title = 'AI Devbox';
   if (first) {
     $('#app').innerHTML = `
@@ -211,6 +214,18 @@ function timeline(j) {
   return `<h2>Timeline</h2><div class="tl">${rows.join('')}</div>`;
 }
 
+// Tokens per stage and model. Cache reads are cheap re-reads of the prompt; output is what the model wrote.
+function tokensHtml(t) {
+  if (!t) return '';
+  const NAME = { plan: 'Plan', review: 'Review', execute: 'Build', verify: 'Verify' };
+  const row = (name, x, strong) => `<tr${strong ? ' style="font-weight:600"' : ''}><td>${esc(name)}</td><td>${num(x.output)}</td><td>${num(x.input)}</td><td>${num(x.cache_read)}</td><td>${num(x.cache_write)}</td><td>${num(tokTotal(x))}</td><td>$${x.cost_usd.toFixed(2)}</td></tr>`;
+  return `<h2>Token usage</h2><table>
+    <tr class="muted"><td>Stage</td><td>Output</td><td>Input</td><td>Cache read</td><td>Cache write</td><td>Total</td><td>≈ API price</td></tr>
+    ${Object.entries(t.by_stage).map(([k, x]) => row(NAME[k] || k, x)).join('')}${row('Total', t.total, true)}
+    ${Object.entries(t.by_model).map(([k, x]) => row(k.replace(/^claude-/, ''), x)).join('')}</table>
+    <p class="muted">Estimated at API list prices. Your Max plan isn't billed per token; jobs count toward its usage limits (bars at the top).</p>`;
+}
+
 function planHtml(j) {
   const p = j.plan;
   if (!p) return '';
@@ -249,6 +264,7 @@ async function job(first, id) {
       <section class="card" id="shots"></section>
       <section class="card report" id="report"></section>
       <section class="card" id="timeline"></section>
+      <section class="card report" id="tokens"></section>
       <section class="card"><h2>Log</h2><pre class="log" id="log"></pre></section>`;
   }
   document.title = `${STATE[j.state] || j.state} · ${j.prompt.slice(0, 40)} · AI Devbox`;
@@ -257,7 +273,7 @@ async function job(first, id) {
   put('head', `<div class="row">${pill(j.state, j.queue ? ` #${j.queue} in queue` : '')}${j.archived_at ? '<span class="pill">Archived</span>' : ''}<span class="muted">${esc(j.project)}${j.stage && ACTIVE.includes(j.state) ? ` · ${esc(STAGE_NAME[j.stage] || j.stage)}` : ''}</span></div>
     <h1>${esc(j.prompt)}</h1>
     <div class="muted"><code class="kbd">${esc(j.branch)}</code>${j.base ? ` from <code class="kbd">${esc(j.base)}</code>` : ''}${j.approved_by ? ` · approved by ${esc(j.approved_by)}` : ''}</div>
-    <div class="stats"><span>Elapsed <b>${dur(j.elapsed_s)}</b></span>${eta}<span><b>${pct}%</b></span>${j.tasks.length ? `<span>Tasks <b>${j.tasks.filter((t) => t.state === 'done').length}/${j.tasks.length}</b></span>` : ''}</div>
+    <div class="stats"><span>Elapsed <b>${dur(j.elapsed_s)}</b></span>${eta}<span><b>${pct}%</b></span>${j.tasks.length ? `<span>Tasks <b>${j.tasks.filter((t) => t.state === 'done').length}/${j.tasks.length}</b></span>` : ''}${j.tokens ? `<span>Tokens <b>${num(tokTotal(j.tokens.total))}</b> ≈$${j.tokens.total.cost_usd.toFixed(2)}</span>` : ''}</div>
     <div class="bar ${j.state === 'done' ? 'done' : ''}"><b style="width:${pct}%"></b></div>
     ${j.message ? `<div class="banner ${esc(j.state)}">${esc(j.message)}</div>` : ''}`);
   put('actions', `<div style="margin-top:12px">${actions(j)}</div>`);
@@ -268,6 +284,8 @@ async function job(first, id) {
   put('report', j.report ? md(j.report) : '');
   $('#report').style.display = j.report ? '' : 'none';
   put('timeline', timeline(j));
+  put('tokens', tokensHtml(j.tokens));
+  $('#tokens').style.display = j.tokens ? '' : 'none';
   const pre = $('#log'), atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
   if (pre.textContent !== log) { pre.textContent = log; if (atBottom || first) pre.scrollTop = pre.scrollHeight; }
   current = j;
@@ -327,7 +345,7 @@ async function refresh(first = false) {
     active = view.kind === 'home' ? await home(first) : await job(first, view.id);
     if (view.kind === 'job') {   // the header meter is global; keep it fresh on job pages too
       const st = await api('GET', '/api/state');
-      renderMeta(st.usage, st.running, st.max_jobs);
+      renderMeta(st.usage, st.running, st.max_jobs, st.today);
     }
   } catch (e) {
     if (first) $('#app').innerHTML = `<div class="card"><p>${esc(e.message)}</p><p><a href="#/">← All jobs</a></p></div>`;

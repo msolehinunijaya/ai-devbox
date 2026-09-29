@@ -11,6 +11,8 @@ const [cmd, ...args] = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args.splice(i, 2)[1] ?? true : undefined; };
 const mins = (s) => (s == null ? '-' : s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`);
 const die = (msg) => { console.error(msg); process.exit(1); };
+const num = (n) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}k` : String(n));
+const tokenLine = (t) => `${num(Job.tokenCount(t))} (output ${num(t.output)}, input ${num(t.input)}, cache read ${num(t.cache_read)}, cache write ${num(t.cache_write)}) · ≈$${t.cost_usd.toFixed(2)} at API prices`;
 
 function printStatus(job) {
   const icon = { done: '✓', skipped: '–', running: '▶', waiting: '⏸', failed: '✗', cancelled: '■', pending: '·' };
@@ -22,6 +24,7 @@ function printStatus(job) {
   console.log(`  branch:  ${job.branch}${job.base ? ' from ' + job.base : ''}`);
   if (job.preview_url) console.log(`  preview: ${job.preview_url}`);
   if (u?.five_hour != null) console.log(`  usage:   5h ${Math.round(u.five_hour * 100)}% · 7d ${Math.round((u.seven_day || 0) * 100)}%`);
+  if (job.tokens) console.log(`  tokens:  ${tokenLine(job.tokens.total)}`);
   console.log('');
   for (const s of Job.STAGES) {
     const st = job.stages[s];
@@ -119,6 +122,23 @@ const commands = {
     console.log(ids.length ? `${dryRun ? 'would archive' : 'archived'} (ended > ${days} days ago):\n  ${ids.join('\n  ')}` : `nothing older than ${days} days to archive`);
   },
 
+  // Token usage per stage and model. With no job: totals per job.
+  async tokens(id) {
+    if (!id) {
+      let sum = 0, cost = 0;
+      for (const j of Ops.jobs().filter((x) => x.tokens)) {
+        sum += Job.tokenCount(j.tokens.total); cost += j.tokens.total.cost_usd;
+        console.log(`${num(Job.tokenCount(j.tokens.total)).padStart(6)}  ≈$${j.tokens.total.cost_usd.toFixed(2).padStart(5)}  ${j.id}`);
+      }
+      return console.log(`${num(sum).padStart(6)}  ≈$${cost.toFixed(2).padStart(5)}  total (API-price estimate; Max isn't billed per token)`);
+    }
+    const t = Ops.get(id).tokens || die('No token data for this job.');
+    console.log(`total    ${tokenLine(t.total)}\n`);
+    for (const [k, v] of Object.entries(t.by_stage)) console.log(`${k.padEnd(8)} ${tokenLine(v)}  [${v.calls} call${v.calls > 1 ? 's' : ''}]`);
+    console.log('');
+    for (const [k, v] of Object.entries(t.by_model)) console.log(`${k.padEnd(20)} ${tokenLine(v)}`);
+  },
+
   async tick() { Ops.tick(); },
   async projects() { for (const n of projectNames()) console.log(n); },
 };
@@ -130,6 +150,7 @@ const help = `usage: ./ai <command>
   archive <job>                 free preview/db/worktree, keep the branch
   discard <job>                 archive and delete the branch
   cleanup [--days 7] [--dry-run]  archive finished jobs older than N days
+  tokens [job]                  token usage per stage/model (or per job)
   add-project <name> | projects`;
 
 if (!commands[cmd]) { console.log(help); process.exit(cmd ? 1 : 0); }

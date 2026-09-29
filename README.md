@@ -24,6 +24,7 @@ Start a job, watch the timeline, approve plans, open previews, take over a sessi
 ./ai takeover <job>                                open the job's Claude session in tmux
 ./ai archive <job>     ./ai discard <job>          free disk (keep branch) / delete everything
 ./ai cleanup --dry-run                             what the hourly cleanup would archive
+./ai tokens [job]                                  token usage per job, or per stage/model for one job
 ```
 
 Previews: `http://<job>.100-103-68-10.sslip.io/`, served by PHP-FPM as `ai`, on the job's own MariaDB database.
@@ -41,6 +42,10 @@ Previews: `http://<job>.100-103-68-10.sslip.io/`, served by PHP-FPM as `ai`, on 
 | test | runner | the project's test commands + desktop/mobile screenshots |
 | verify | Claude opus, auto mode | checks diff, tests and screenshots against the plan; may fix and re-verify (max 3 rounds) |
 | publish | runner | pushes the branch when `"push": true` |
+
+Token usage (output, input, cache read/write, and Claude Code's API-list-price estimate) is recorded
+per call and shown per stage and model on the job page, in `report.md` and in the header (today's total).
+The Max plan isn't billed per token; jobs count toward its 5-hour and 7-day limits.
 
 At most 2 jobs run at once, one per project; a second job also waits until 400 MB of memory is free.
 Composer, npm, builds, tests and the browser take one global lock and run at low CPU/IO priority.
