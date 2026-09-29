@@ -20,7 +20,7 @@ Start a job, watch the timeline, approve plans, open previews, take over a sessi
 ./ai list                                          all jobs
 ./ai status <job> --watch                          timeline, ETA, last log lines
 ./ai plan <job>        ./ai approve <job>          review / approve a plan (projects with the gate on)
-./ai retry <job>       ./ai cancel <job>           resume from the stage that stopped / stop it
+./ai retry <job> [--from preview]  ./ai cancel <job>  resume (or rerun from a stage) / stop it
 ./ai takeover <job>                                open the job's Claude session in tmux
 ./ai archive <job>     ./ai discard <job>          free disk (keep branch) / delete everything
 ./ai cleanup --dry-run                             what the hourly cleanup would archive
@@ -78,9 +78,16 @@ Add an entry to `config/projects.json`, then `./ai add-project <name>`:
   "approve_plan": true, "push": false,
   "deps_from": "/var/www/myapp",                    // copy vendor/node_modules from here when lock files match
   "env": { "SOME_FLAG": "false" },                  // extra .env values for previews
-  "tests": ["php artisan test"], "snapshots": ["/"]
+  "tests": ["php artisan test"], "snapshots": ["/"],
+  "setup": ["php artisan wayfinder:generate --with-form"],   // after the worktree is ready (git-ignored generators)
+  "preview_login": { "path": "/login", "email": "preview@devbox.test" },   // seeded user; screenshots sign in
+  "ui": "Frontend notes for the agents: layouts, component library, where nav links go"
 }
 ```
+
+Every plan, build and verify prompt includes `prompts/ui-standard.md` plus the project's `ui` notes, and the
+verifier fails pages whose screenshots look unfinished. Agents can use the `frontend-design` skill
+(`config/skills/`, installed for `ai` by `setup.sh`).
 
 v1 supports Laravel only. The runner works in its own clone (`repos/<name>`); your checkout is never changed.
 

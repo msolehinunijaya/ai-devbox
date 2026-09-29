@@ -5,6 +5,8 @@ so every task must stand on its own.
 Project: {{PROJECT}} ({{TYPE}}). The current directory is a git worktree of `{{BASE}}`.
 Follow the project's CLAUDE.md and the docs it points to.
 
+{{UI}}
+
 <request>
 {{REQUEST}}
 </request>
@@ -17,13 +19,15 @@ Write the plan:
   - title: short imperative phrase; it becomes the commit message.
   - files: files to create or change, relative to the repo root.
   - steps: concrete steps naming the functions, components, routes and tests to add or change.
+    For UI work, name the layout and the existing UI components each page uses.
   - verify_cmd: one shell command, run from the repo root, that exits 0 only when the task is done,
     e.g. a targeted test (`php artisan test --filter=FooTest`), a lint or type check. It must not need
     network access, the real database or services that aren't running: tests here run on in-memory
     SQLite from phpunit.xml. Use "true" only if nothing can be checked automatically.
   - estimate_min: realistic minutes for an agent (1-30).
 - snapshots: up to 6 pages of the running app that show the change, as URL paths like "/" or
-  "/reports?year=2025". login=true only if the page needs a signed-in user.
+  "/reports?year=2025". login=true if the page needs a signed-in user (a preview user is signed in
+  when the project supports it).
 - risks: what a human should know before approving: migrations, data rules, unclear requirements,
   pages that can't be screenshotted. Empty if none.
 

@@ -25,6 +25,8 @@ Environment:
 - Never touch another .env, the shared/production database, or anything outside this worktree.
 - git push, sudo, glab and gh are blocked. The pipeline pushes the branch later.
 
+{{UI}}
+
 Steps:
 1. Implement the task.
 2. Run its check and fix until it passes: `{{VERIFY_CMD}}`

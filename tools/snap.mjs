@@ -12,6 +12,8 @@ const [base, userPass, outDir, ...paths] = process.argv.slice(2);
 const httpCredentials = userPass && userPass !== '-'
   ? { username: userPass.split(':')[0], password: userPass.split(':').slice(1).join(':') } : undefined;
 const viewports = { desktop: { width: 1440, height: 900 }, mobile: { width: 390, height: 844 } };
+// Optional sign-in first: SNAP_LOGIN='{"path":"/login","email":"...","password":"..."}' (a form with email/password fields).
+const login = process.env.SNAP_LOGIN ? JSON.parse(process.env.SNAP_LOGIN) : null;
 
 // Flags keep Chromium lean on a 2 GB box
 const browser = await chromium.launch({ args: ['--disable-dev-shm-usage', '--disable-gpu', '--mute-audio'] });
@@ -20,10 +22,26 @@ try {
   for (const [label, viewport] of Object.entries(viewports)) {
     const ctx = await browser.newContext({ viewport, httpCredentials });
     const page = await ctx.newPage();
+    let signedIn = null;
+    if (login) {
+      try {
+        await page.goto(base + login.path, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.fill('input[name="email"]', login.email);
+        await page.fill('input[name="password"]', login.password);
+        await Promise.all([
+          page.waitForURL((u) => !u.pathname.startsWith(login.path), { timeout: 30000 }),
+          page.click('button[type="submit"]'),
+        ]);
+        signedIn = 'yes';
+      } catch (e) {
+        signedIn = `failed: ${e.message.split('\n')[0]}`;
+      }
+      console.log(`sign-in (${label}): ${signedIn}`);
+    }
     for (const p of paths) {
       const slug = p.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '') || 'home';
       const file = path.join(outDir, `${slug}-${label}.png`);
-      const shot = { path: p, viewport: label, file, status: null, error: null };
+      const shot = { path: p, viewport: label, file, status: null, error: null, signed_in: signedIn };
       try {
         const res = await page.goto(base + p, { waitUntil: 'networkidle', timeout: 45000 });
         shot.status = res?.status() ?? null;

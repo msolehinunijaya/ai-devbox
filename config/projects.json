@@ -53,12 +53,22 @@
     "type": "laravel",
     "approve_plan": false,
     "push": true,
-    "deps_from": "/var/www/ai-devbox/repos/_src/sandbox",
+    "deps_from": "/var/www/ai-devbox/repos/_src/test-react",
     "tests": [
-      "php artisan test"
+      "php artisan test",
+      "npm run types:check"
     ],
     "snapshots": [
-      "/"
-    ]
+      "/",
+      "/dashboard"
+    ],
+    "setup": [
+      "php artisan wayfinder:generate --with-form"
+    ],
+    "preview_login": {
+      "path": "/login",
+      "email": "preview@devbox.test"
+    },
+    "ui": "- Inertia 3 + React 19 + TypeScript in resources/js; Tailwind 4 with the shadcn/ui theme (resources/css/app.css).\n- Pages are resources/js/pages/**/*.tsx, rendered with Inertia::render() or Route::inertia(). Signed-in pages use\n  AppLayout (resources/js/layouts/app-layout.tsx) with breadcrumbs, like pages/dashboard.tsx.\n- Use the shadcn/ui components in resources/js/components/ui (button, card, input, label, checkbox, dialog, badge,\n  select, separator, skeleton, alert, ...), lucide-react icons, and components/heading.tsx and input-error.tsx.\n  If a shadcn component is missing, add it as a new file in components/ui in the same style; no new UI libraries.\n- Forms follow pages/auth/login.tsx (Inertia <Form>, InputError, disabled + spinner while processing).\n- Add new signed-in pages to the sidebar: mainNavItems in resources/js/components/app-sidebar.tsx.\n- TypeScript uses Wayfinder route helpers (@/routes, @/actions). After adding routes or controllers run\n  `php artisan wayfinder:generate --with-form`, then `npm run types:check` and `npm run check`."
   }
 }

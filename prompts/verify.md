@@ -28,12 +28,18 @@ Screenshots (PNG files; open them with the Read tool):
 
 Steps:
 1. Read the diff (`git diff {{BASE_SHA}}...HEAD`) and compare it with the request and each plan task.
-2. Look at the screenshots of the pages the change affects.
+2. Look at the screenshots of the pages the change affects and judge them as a user would, against the
+   UI standard below. A page that looks unstyled, cramped, broken on the phone size or out of place in
+   the app fails its task even when the tests pass. Use only these screenshots: don't start your own
+   server or browser. If a screenshot is missing or shows an error page, say so in that task's note.
 3. Decide for each plan task: pass, partial or fail.
 4. {{FIX_RULE}}
 
+{{UI}}
+
 Return:
-- verdict: "pass" only if the request is met, the relevant tests pass and the screenshots look right.
+- verdict: "pass" only if the request is met, the relevant tests pass and the screenshots look right
+  and finished.
   Failing tests that are unrelated to this change don't block a pass; list them in followups.
 - tasks: one entry per plan task.
 - fixed: true if you committed fixes in this round.

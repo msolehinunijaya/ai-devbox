@@ -105,7 +105,7 @@ const commands = {
     console.log(`approved; ${id} continues. ./ai status ${id} --watch`);
   },
   async reject(id) { Ops.reject(id); console.log(`rejected ${id}. ./ai discard ${id} removes its worktree and database.`); },
-  async retry(id) { Ops.retry(id); console.log(`retrying ${id}. ./ai status ${id} --watch`); },
+  async retry(id) { const from = flag('--from'); Ops.retry(id, from); console.log(`retrying ${id}${from ? ' from ' + from : ''}. ./ai status ${id} --watch`); },
   async cancel(id) { Ops.cancel(id); console.log(`cancelling ${id}`); },
   async discard(id) { await Ops.discard(id); console.log(`discarded ${id}`); },
 
@@ -146,7 +146,7 @@ const commands = {
 const help = `usage: ./ai <command>
   start <project> <prompt...>   queue a job        list | status <job> [--watch] | log <job> [-n 80]
   plan <job>                    show the plan      approve <job> [--by name] | reject <job>
-  retry <job> | cancel <job> | takeover <job> | report <job>
+  retry <job> [--from preview] | cancel <job> | takeover <job> | report <job>
   archive <job>                 free preview/db/worktree, keep the branch
   discard <job>                 archive and delete the branch
   cleanup [--days 7] [--dry-run]  archive finished jobs older than N days

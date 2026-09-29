@@ -37,6 +37,10 @@ sudo -u "$AI" -H node -e '
   j.hasCompletedOnboarding = true; j.theme = j.theme || "dark";
   fs.writeFileSync(f, JSON.stringify(j, null, 2), { mode: 0o600 });'
 chmod 755 ai cli.js
+# Skills the job agents may use (e.g. frontend-design), from config/skills/
+install -d -o "$AI" -g "$AI" -m 755 "$AI_HOME/.claude/skills"
+cp -r config/skills/. "$AI_HOME/.claude/skills/"
+chown -R "$AI:$AI" "$AI_HOME/.claude/skills"
 
 log "SSH key and git identity for $AI"
 install -d -o "$AI" -g "$AI" -m 700 "$AI_HOME/.ssh"

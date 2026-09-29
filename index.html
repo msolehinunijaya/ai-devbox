@@ -276,7 +276,8 @@ async function job(first, id) {
     <div class="stats"><span>Elapsed <b>${dur(j.elapsed_s)}</b></span>${eta}<span><b>${pct}%</b></span>${j.tasks.length ? `<span>Tasks <b>${j.tasks.filter((t) => t.state === 'done').length}/${j.tasks.length}</b></span>` : ''}${j.tokens ? `<span>Tokens <b>${num(tokTotal(j.tokens.total))}</b> ≈$${j.tokens.total.cost_usd.toFixed(2)}</span>` : ''}</div>
     <div class="bar ${j.state === 'done' ? 'done' : ''}"><b style="width:${pct}%"></b></div>
     ${j.message ? `<div class="banner ${esc(j.state)}">${esc(j.message)}</div>` : ''}`);
-  put('actions', `<div style="margin-top:12px">${actions(j)}</div>`);
+  const lg = j.preview_login && j.preview_url ? `<p class="muted" style="margin:10px 0 0">Preview login: <code class="kbd">${esc(j.preview_login.email)}</code> / <code class="kbd">${esc(j.preview_login.password)}</code></p>` : '';
+  put('actions', `<div style="margin-top:12px">${actions(j)}</div>${lg}`);
   if (!editing) put('plan', planHtml(j));
   $('#plan').style.display = j.plan ? '' : 'none';
   put('shots', j.shots.length ? `<h2>Screenshots</h2><div class="shots">${j.shots.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(s.url)}" alt=""><span>${esc(s.path)} · ${esc(s.viewport)} · ${s.status ? 'HTTP ' + esc(s.status) : esc(s.error)}</span></a>`).join('')}</div>` : '');
