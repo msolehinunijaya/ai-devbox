@@ -111,6 +111,14 @@ const commands = {
     console.log(`Session ${t.session_id} is open in tmux session "${id}".\nAttach from the Terminal panel:\n\n  ${t.attach}\n\nDetach with Ctrl+B then D.${t.can_retry ? ` When done, ./ai retry ${id} continues the pipeline.` : ''}`);
   },
 
+  async archive(id) { await Ops.archive(id); console.log(`archived ${id} (branch kept)`); },
+
+  async cleanup() {
+    const days = Number(flag('--days') ?? Ops.KEEP_DAYS), dryRun = args.includes('--dry-run');
+    const ids = await Ops.cleanup({ days, dryRun });
+    console.log(ids.length ? `${dryRun ? 'would archive' : 'archived'} (ended > ${days} days ago):\n  ${ids.join('\n  ')}` : `nothing older than ${days} days to archive`);
+  },
+
   async tick() { Ops.tick(); },
   async projects() { for (const n of projectNames()) console.log(n); },
 };
@@ -118,7 +126,10 @@ const commands = {
 const help = `usage: ./ai <command>
   start <project> <prompt...>   queue a job        list | status <job> [--watch] | log <job> [-n 80]
   plan <job>                    show the plan      approve <job> [--by name] | reject <job>
-  retry <job> | cancel <job> | discard <job> | takeover <job> | report <job>
+  retry <job> | cancel <job> | takeover <job> | report <job>
+  archive <job>                 free preview/db/worktree, keep the branch
+  discard <job>                 archive and delete the branch
+  cleanup [--days 7] [--dry-run]  archive finished jobs older than N days
   add-project <name> | projects`;
 
 if (!commands[cmd]) { console.log(help); process.exit(cmd ? 1 : 0); }

@@ -149,7 +149,7 @@ function jobCard(j) {
   const tasks = j.tasks_total ? ` · ${j.tasks_done}/${j.tasks_total} tasks` : '';
   const bar = ACTIVE.includes(j.state) || j.state === 'awaiting_approval' ? `<div class="bar"><b style="width:${Math.round((j.progress || 0) * 100)}%"></b></div>` : '';
   return `<a class="card job" href="#/job/${esc(j.id)}">
-    <div class="row">${pill(j.state, j.queue ? ` #${j.queue}` : '')}<span class="muted">${esc(j.project)} · ${dur(j.elapsed_s)}${eta}${tasks}</span></div>
+    <div class="row">${pill(j.state, j.queue ? ` #${j.queue}` : '')}${j.archived_at ? '<span class="pill">Archived</span>' : ''}<span class="muted">${esc(j.project)} · ${dur(j.elapsed_s)}${eta}${tasks}</span></div>
     <div class="prompt">${esc(j.prompt)}</div>
     ${j.message && !ACTIVE.includes(j.state) ? `<div class="muted">${esc(j.message)}</div>` : ''}${bar}</a>`;
 }
@@ -234,7 +234,8 @@ function actions(j) {
   if (j.preview_url) b.push(`<a class="btn primary" href="${esc(j.preview_url)}" target="_blank" rel="noopener">Open preview ↗</a>`);
   if (ACTIVE.includes(j.state)) b.push('<button class="danger" data-act="cancel">Cancel</button>');
   if (['needs_you', 'failed', 'interrupted', 'cancelled'].includes(j.state)) b.push('<button class="primary" data-act="retry">Retry</button>');
-  if (!ACTIVE.includes(j.state) && j.state !== 'discarded' && j.state !== 'awaiting_approval') b.push('<button data-act="takeover">Take over</button>');
+  if (!ACTIVE.includes(j.state) && !['discarded', 'awaiting_approval'].includes(j.state) && !j.archived_at) b.push('<button data-act="takeover">Take over</button>');
+  if (['done', 'failed', 'cancelled'].includes(j.state) && !j.archived_at) b.push('<button data-act="archive">Archive</button>');
   if (!ACTIVE.includes(j.state) && j.state !== 'discarded') b.push('<button class="danger" data-act="discard">Discard</button>');
   return b.length ? `<div class="row">${b.join('')}</div>` : '';
 }
@@ -253,7 +254,7 @@ async function job(first, id) {
   document.title = `${STATE[j.state] || j.state} · ${j.prompt.slice(0, 40)} · AI Devbox`;
   const pct = Math.round((j.progress || 0) * 100);
   const eta = ACTIVE.includes(j.state) && j.eta_s ? `<span>ETA <b>~${dur(j.eta_s)}</b></span>` : '';
-  put('head', `<div class="row">${pill(j.state, j.queue ? ` #${j.queue} in queue` : '')}<span class="muted">${esc(j.project)}${j.stage && ACTIVE.includes(j.state) ? ` · ${esc(STAGE_NAME[j.stage] || j.stage)}` : ''}</span></div>
+  put('head', `<div class="row">${pill(j.state, j.queue ? ` #${j.queue} in queue` : '')}${j.archived_at ? '<span class="pill">Archived</span>' : ''}<span class="muted">${esc(j.project)}${j.stage && ACTIVE.includes(j.state) ? ` · ${esc(STAGE_NAME[j.stage] || j.stage)}` : ''}</span></div>
     <h1>${esc(j.prompt)}</h1>
     <div class="muted"><code class="kbd">${esc(j.branch)}</code>${j.base ? ` from <code class="kbd">${esc(j.base)}</code>` : ''}${j.approved_by ? ` · approved by ${esc(j.approved_by)}` : ''}</div>
     <div class="stats"><span>Elapsed <b>${dur(j.elapsed_s)}</b></span>${eta}<span><b>${pct}%</b></span>${j.tasks.length ? `<span>Tasks <b>${j.tasks.filter((t) => t.state === 'done').length}/${j.tasks.length}</b></span>` : ''}</div>
@@ -277,13 +278,15 @@ let current = null, editing = false;
 async function act(name, btn) {
   const j = current;
   if (name === 'edit') return editPlan(j);
-  const ask = { cancel: 'Cancel this job?', reject: 'Reject this plan? The job is cancelled.', discard: 'Discard this job? Its worktree, branch, database and preview are deleted.' }[name];
+  const ask = { cancel: 'Cancel this job?', reject: 'Reject this plan? The job is cancelled.',
+    archive: 'Archive this job? Its preview, database and worktree are removed; the branch, report and screenshots stay.',
+    discard: 'Discard this job? Its worktree, database, preview AND its branch are deleted. Unpushed work is lost.' }[name];
   if (ask && !confirm(ask)) return;
   btn.disabled = true;
   try {
     const out = await api('POST', `/api/jobs/${j.id}/${name}`);
     if (name === 'takeover') showTakeover(out);
-    else toast({ approve: 'Approved. The job continues.', retry: 'Retrying.', cancel: 'Cancelling…', reject: 'Plan rejected.', discard: 'Discarded.' }[name]);
+    else toast({ approve: 'Approved. The job continues.', retry: 'Retrying.', cancel: 'Cancelling…', reject: 'Plan rejected.', archive: 'Archived; the branch is kept.', discard: 'Discarded.' }[name]);
     refresh();
   } catch (e) { toast(e.message); btn.disabled = false; }
 }

@@ -42,7 +42,7 @@ function summary(j) {
   return {
     id: j.id, project: j.project, prompt: j.prompt, state: j.state, stage: j.stage, message: j.message,
     created_at: j.created_at, elapsed_s: j.elapsed_s, eta_s: j.eta_s, progress: j.progress,
-    preview_url: j.preview_url, verdict: j.verdict, queue: Ops.queuePosition(j),
+    preview_url: j.preview_url, verdict: j.verdict, queue: Ops.queuePosition(j), archived_at: j.archived_at || null,
     tasks_done: j.tasks.filter((t) => t.state === 'done').length, tasks_total: j.tasks.length,
   };
 }
@@ -79,6 +79,7 @@ const ACTIONS = {
   reject: (id) => Ops.reject(id),
   retry: (id) => Ops.retry(id),
   cancel: (id) => Ops.cancel(id),
+  archive: (id) => Ops.archive(id),
   discard: (id) => Ops.discard(id),
   takeover: (id) => Ops.takeover(id),
 };
@@ -156,4 +157,8 @@ const server = http.createServer((req, res) => {
 Ops.jobs();                       // marks jobs whose runner died while we were down as interrupted
 Ops.tick();
 setInterval(() => { try { Ops.tick(); } catch (e) { console.error('tick:', e.message); } }, 5000);
+// Hourly: archive finished jobs older than AI_DEVBOX_KEEP_DAYS (default 7); branches are kept.
+const cleanup = () => Ops.cleanup().then((ids) => ids.length && console.log(`archived: ${ids.join(', ')}`), (e) => console.error('cleanup:', e.message));
+setTimeout(cleanup, 60e3);
+setInterval(cleanup, 3600e3);
 server.listen(PORT, '127.0.0.1', () => console.log(`AI Devbox dashboard on 127.0.0.1:${PORT}`));

@@ -10,6 +10,8 @@ Group=ai
 WorkingDirectory=/var/www/ai-devbox/run
 # CLAUDE_CODE_OAUTH_TOKEN (root-only file; systemd reads it before dropping to ai)
 EnvironmentFile=/etc/ai-devbox/claude.env
+# AI_DEVBOX_NTFY_TOPIC for phone notifications (optional)
+EnvironmentFile=-/etc/ai-devbox/ntfy.env
 ExecStart=/usr/bin/node /var/www/ai-devbox/server.js
 Restart=on-failure
 RestartSec=3

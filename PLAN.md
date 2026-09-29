@@ -16,6 +16,24 @@ Known facts:
   for Max on a server, `--resume <session>`. Remote Control can only **attach to a running session**; it cannot
   start new ones. So a small dashboard starts jobs, and Remote Control is the "take over" door.
 
+## Status (2026-09-29): v1 built
+
+| Phase | State |
+|---|---|
+| 0 Audit | done |
+| 1 Server prep | done: `ai` user, MariaDB socket user, FPM pool, Tailscale, previews over Tailscale, Claude token |
+| 2 Runner + prompts | done: tested end to end on the sandbox project |
+| 3 Dashboard | done: `http://claude-dev/`, queue (2 jobs, 1 per project), approvals record the Tailscale login |
+| 4 Concurrency + tuning | done: see "Phase 4 measurements" below |
+| 5 Hardening | done: hourly archive of finished jobs > 7 days (branches kept), ntfy notifications, port 8081 closed, README |
+
+Open items (yours):
+- GitLab/GitHub deploy key for `ai` (public key in `/home/ai/.ssh/id_ed25519.pub`), then `"push": true` per project.
+- Remote Control take-over from the phone needs `claude auth login` as `ai` (full-scope credentials readable
+  by agents). Until then, take over = tmux from the Terminal panel.
+- Optional: disable ModemManager, udisks2, fwupd, multipathd (~60-70 MB); resize to 4 GB for real projects.
+- kkdw is registered but disabled (`"enabled": false`); the `/ship` command still exists but has no public preview.
+
 ## Adjustments after the Phase 0 audit (2026-09-29)
 
 Where this section disagrees with the rest of the plan, this section wins.
@@ -164,7 +182,7 @@ Claude app. Exact flag confirmed from `claude --help` in Phase 0.
 2. **Runner + prompts, CLI only (2–3 h):** run end-to-end on kkdw_2026 with a tiny prompt.
 3. **Dashboard (2 h).**
 4. **Concurrency + 2 GB tuning (1 h):** two jobs on two projects, watch `vmstat 5`, tune the lock and swap.
-5. **Hardening (30 min):** cleanup for jobs older than 7 days (manual Discard in v1), ntfy optional.
+5. **Hardening (30 min):** archive finished jobs older than 7 days (hourly, branches kept), ntfy notifications.
 
 ## Verification
 
