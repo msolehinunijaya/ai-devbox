@@ -31,5 +31,19 @@
     "snapshots": [
       "/"
     ]
+  },
+  "sandbox2": {
+    "source": "/var/www/ai-devbox/repos/_src/sandbox2",
+    "base": "main",
+    "type": "laravel",
+    "approve_plan": false,
+    "push": false,
+    "deps_from": "/var/www/ai-devbox/repos/_src/sandbox2",
+    "tests": [
+      "php artisan test"
+    ],
+    "snapshots": [
+      "/"
+    ]
   }
 }

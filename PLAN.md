@@ -61,6 +61,28 @@ An earlier pipeline (`/ship`, `~/.claude/ai-pipeline/`) exists; it stays until t
 17. Pipeline tests use a throwaway Laravel 13 app (`sandbox`, source `repos/_src/sandbox`, no gate, no push).
     kkdw stays registered but unused until you want it.
 
+## Phase 4 measurements (2026-09-29)
+
+Two jobs on two projects (sandbox: dark-mode toggle, 3 tasks; sandbox2: contact form + migration, 3 tasks) at the
+same time, plus this Claude session and one interactive session. Sampled every 3 s (`tools/memwatch.mjs`) and `vmstat 5`.
+
+| Measure | Result |
+|---|---|
+| Lowest MemAvailable | 370 MB of 1,967 (5 Claude processes, ~1.06 GB RSS together) |
+| Swap used | 262 MB idle, 505 MB peak; bursts up to ~13 MB/s, no thrashing |
+| CPU (1 vCPU) | saturated during builds/tests: run queue up to 13, load 5, idle 25% on average |
+| Heavy-lock waits | 3 s in total: agents spend most of the time waiting on the API |
+| Duration | 4m20s and 4m48s in parallel, vs ~4 min alone |
+| Kills | none (earlyoom and kernel) |
+| Dashboard restart mid-job | both runners kept running |
+| Live kkdw latency during build+test | 0.275 s idle, 0.34 s under load (with or without nice: it's Cloud SQL-bound) |
+
+Tuning applied: heavy steps run under `nice -n 10 ionice -c2 -n7`; a second job starts only while
+MemAvailable >= 400 MB (`AI_DEVBOX_MIN_START_MB`), otherwise it waits in the queue with a message.
+Kept: one global heavy lock, MAX_JOBS=2, 4 GB swap at swappiness 10, builds at `--max-old-space-size=1024`.
+Real projects with bigger builds (kkdw: 403 MB node_modules) will need more headroom than the sandboxes;
+each interactive Claude session costs ~300 MB of the same RAM.
+
 ## Your questions, answered
 
 **Should I install Docker?** No, not on 2 GB. Docker would run PHP + MySQL per project; three containers eat the
