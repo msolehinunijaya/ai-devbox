@@ -1,0 +1,22 @@
+# AI Devbox dashboard. Installed by setup.sh as /etc/systemd/system/ai-dashboard.service.
+[Unit]
+Description=AI Devbox dashboard (served over Tailscale by nginx)
+After=network-online.target mariadb.service tailscaled.service
+Wants=network-online.target
+
+[Service]
+User=ai
+Group=ai
+WorkingDirectory=/var/www/ai-devbox/run
+# CLAUDE_CODE_OAUTH_TOKEN (root-only file; systemd reads it before dropping to ai)
+EnvironmentFile=/etc/ai-devbox/claude.env
+ExecStart=/usr/bin/node /var/www/ai-devbox/server.js
+Restart=on-failure
+RestartSec=3
+# Job runners are started detached from the dashboard: restarting it must not kill running jobs.
+KillMode=process
+# The kernel and earlyoom pick other processes first; runners reset this for Claude and builds.
+OOMScoreAdjust=-500
+
+[Install]
+WantedBy=multi-user.target

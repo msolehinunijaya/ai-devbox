@@ -60,9 +60,9 @@ install -m 644 config/php-fpm-ai.conf /etc/php/8.4/fpm/pool.d/ai.conf
 php-fpm8.4 -t 2>&1 | tail -1
 systemctl reload php8.4-fpm
 
-log "earlyoom: never kill the dashboard"
-if ! grep -q 'ai-dashboard' /etc/default/earlyoom; then
-  sed -i "s/--avoid '^(/--avoid '^(ai-dashboard|/" /etc/default/earlyoom
+log "earlyoom: never kill the dashboard or a job runner"
+if ! grep -q 'ai-runner' /etc/default/earlyoom; then   # process names set by server.js and the job runner
+  sed -i "s/ai-dashboard|//; s/--avoid '^(/--avoid '^(ai-dashboard|ai-runner|/" /etc/default/earlyoom
   systemctl restart earlyoom
 fi
 
@@ -89,13 +89,33 @@ TS_IP="$(tailscale ip -4 2>/dev/null | head -1 || true)"
 if [ -z "$TS_IP" ]; then
   echo "Tailscale is not logged in yet: run 'tailscale up', then run this script again."
 else
-  sed "s/__TS_IP__/$TS_IP/g; s/__TS_DASHED__/${TS_IP//./-}/g" config/nginx-ai.conf \
+  TS_NAMES="$(tailscale status --json | node -e '
+    let s = ""; process.stdin.on("data", (d) => (s += d)).on("end", () => {
+      const n = (JSON.parse(s).Self.DNSName || "").replace(/\.$/, "");
+      console.log(n ? `${n.split(".")[0]} ${n}` : "");
+    });')"
+  sed "s/__TS_IP__/$TS_IP/g; s/__TS_DASHED__/${TS_IP//./-}/g; s/__TS_NAMES__/$TS_NAMES/g" config/nginx-ai.conf \
     > /etc/nginx/sites-available/ai-devbox
   ln -sf /etc/nginx/sites-available/ai-devbox /etc/nginx/sites-enabled/ai-devbox
   nginx -t 2>&1 | tail -1
   systemctl reload nginx
-  printf '{ "ts_ip": "%s", "domain": "%s.sslip.io" }\n' "$TS_IP" "${TS_IP//./-}" > "$ROOT/run/host.json"
-  echo "Previews: http://<job>.${TS_IP//./-}.sslip.io"
+  TS_IP="$TS_IP" TS_NAMES="$TS_NAMES" node -e '
+    const e = process.env, ip = e.TS_IP;
+    const j = { ts_ip: ip, domain: ip.replace(/\./g, "-") + ".sslip.io", names: e.TS_NAMES.split(" ").filter(Boolean) };
+    require("fs").writeFileSync(process.argv[1], JSON.stringify(j, null, 2) + "\n");' "$ROOT/run/host.json"
+  echo "Dashboard: http://$TS_IP/  (also http://${TS_NAMES%% *}/ with MagicDNS)"
+  echo "Previews:  http://<job>.${TS_IP//./-}.sslip.io"
+fi
+
+log "Dashboard service"
+install -m 644 config/ai-dashboard.service /etc/systemd/system/ai-dashboard.service
+systemctl daemon-reload
+if [ -s /etc/ai-devbox/claude.env ]; then
+  systemctl enable ai-dashboard >/dev/null 2>&1
+  systemctl restart ai-dashboard   # KillMode=process: running jobs survive
+  sleep 1; systemctl is-active ai-dashboard
+else
+  echo "No Claude token in /etc/ai-devbox/claude.env yet: dashboard not started."
 fi
 
 log "Done"

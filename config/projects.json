@@ -1,5 +1,6 @@
 {
   "kkdw": {
+    "enabled": false,
     "source": "/var/www/kkdw_v2.0",
     "remote": "git@gitlab.com:developer-unijaya/claudecode/kkdw_v2.0.git",
     "base": "main",

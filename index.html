@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Devbox</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #16181d; --muted: #667085; --line: #e3e6eb; --chip: #f0f2f5;
+    --accent: #2f6fed; --ok: #12805c; --warn: #b54708; --bad: #c0362c; --wait: #6941c6;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --card: #171a21; --text: #e6e8ec; --muted: #98a2b3; --line: #2a2f3a; --chip: #222733;
+      --accent: #6d9bff; --ok: #3ccb8f; --warn: #f5a55a; --bad: #f97066; --wait: #a48afb;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; justify-content: space-between;
+         padding: 10px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 650; color: var(--text); letter-spacing: -0.01em; }
+  #meta { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 13px; }
+  .meter { display: inline-flex; align-items: center; gap: 6px; }
+  .meter i { display: inline-block; width: 46px; height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+  .meter i b { display: block; height: 100%; background: var(--accent); }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+  h1 { font-size: 20px; line-height: 1.3; margin: 4px 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  h2.section { margin: 22px 2px 10px; color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  select, textarea { display: block; width: 100%; margin-top: 5px; font: inherit; color: var(--text); background: var(--bg);
+                     border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+  textarea { resize: vertical; min-height: 84px; }
+  textarea.code { font: 12.5px/1.45 var(--mono); min-height: 340px; }
+  button, .btn { font: inherit; font-weight: 550; border-radius: 8px; padding: 8px 14px; cursor: pointer; display: inline-block;
+           border: 1px solid var(--line); background: var(--card); color: var(--text); text-decoration: none; }
+  button:hover, .btn:hover { border-color: var(--muted); text-decoration: none; }
+  button.primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--bad); }
+  button:disabled { opacity: 0.55; cursor: default; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .hint, .muted { color: var(--muted); font-size: 13px; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+  .s-running { color: var(--accent); } .s-done { color: var(--ok); } .s-awaiting_approval { color: var(--wait); }
+  .s-needs_you, .s-interrupted { color: var(--warn); } .s-failed { color: var(--bad); }
+  .bar { height: 6px; border-radius: 3px; background: var(--chip); overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--accent); transition: width .6s; }
+  .bar.done b { background: var(--ok); }
+  .job { display: block; color: inherit; padding: 12px 14px; }
+  .job:hover { text-decoration: none; border-color: var(--muted); }
+  .job .prompt { font-weight: 550; margin: 6px 0 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .job .bar { margin-top: 8px; }
+  .banner { margin: 12px 0; padding: 10px 12px; border-radius: 8px; background: var(--chip); font-size: 14px; }
+  .banner.needs_you, .banner.interrupted { border-left: 3px solid var(--warn); }
+  .banner.failed { border-left: 3px solid var(--bad); } .banner.done { border-left: 3px solid var(--ok); }
+  .banner.awaiting_approval { border-left: 3px solid var(--wait); }
+  .stats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
+  .stats b { color: var(--text); font-weight: 600; }
+  .tl { display: grid; grid-template-columns: 22px 1fr minmax(60px, 34%) 64px; gap: 6px 8px; align-items: center; font-size: 14px; }
+  .tl .ico { text-align: center; color: var(--muted); }
+  .tl .ico.done { color: var(--ok); } .tl .ico.running { color: var(--accent); } .tl .ico.failed { color: var(--bad); } .tl .ico.waiting { color: var(--wait); }
+  .tl .name.sub { padding-left: 14px; color: var(--muted); font-size: 13px; }
+  .tl .dur { text-align: right; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .tl .bar.running b { background: repeating-linear-gradient(45deg, var(--accent) 0 8px, color-mix(in srgb, var(--accent) 60%, transparent) 8px 16px); }
+  .task { border-top: 1px solid var(--line); padding: 10px 0; }
+  .task:first-of-type { border-top: 0; }
+  .task ul { margin: 6px 0; padding-left: 20px; }
+  .task code, .report code, .kbd { font: 12.5px var(--mono); background: var(--chip); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .shots a { display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); color: var(--muted); font-size: 12px; }
+  .shots img { display: block; width: 100%; height: 150px; object-fit: cover; object-position: top; }
+  .shots span { display: block; padding: 5px 8px; }
+  pre.log { margin: 0; max-height: 380px; overflow: auto; font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
+  .report table { border-collapse: collapse; width: 100%; font-size: 13.5px; margin: 6px 0 12px; }
+  .report td { border-top: 1px solid var(--line); padding: 6px 8px 6px 0; vertical-align: top; }
+  .report h3 { font-size: 17px; margin: 0 0 8px; } .report h4 { font-size: 14px; margin: 16px 0 6px; }
+  details > summary { cursor: pointer; font-weight: 600; list-style: none; }
+  details > summary::before { content: "▸ "; color: var(--muted); } details[open] > summary::before { content: "▾ "; }
+  dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); max-width: min(560px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgb(0 0 0 / 0.35); }
+  #toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--text); color: var(--bg);
+           padding: 9px 14px; border-radius: 8px; font-size: 14px; display: none; max-width: calc(100vw - 32px); }
+  @media (max-width: 560px) { .tl { grid-template-columns: 22px 1fr 60px; } .tl .bar { display: none; } #meta .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="#/">AI Devbox</a><div id="meta"></div></header>
+<main id="app"></main>
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const dur = (s) => s == null ? '–' : s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, '0')}s` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+const secs = (a, b) => (Date.parse(b || new Date().toISOString()) - Date.parse(a)) / 1000;
+const STATE = { queued: 'Queued', running: 'Running', awaiting_approval: 'Needs approval', needs_you: 'Needs you', failed: 'Failed',
+                done: 'Done', cancelled: 'Cancelled', discarded: 'Discarded', interrupted: 'Interrupted' };
+const ACTIVE = ['queued', 'running'];
+const pill = (s, extra = '') => `<span class="pill s-${esc(s)}">${esc(STATE[s] || s)}${extra}</span>`;
+
+async function api(method, url, data) {
+  const r = await fetch(url, { method, headers: { 'x-devbox': '1', ...(data ? { 'content-type': 'application/json' } : {}) }, body: data ? JSON.stringify(data) : undefined });
+  const out = (r.headers.get('content-type') || '').includes('json') ? await r.json() : await r.text();
+  if (!r.ok) throw new Error(out.error || r.statusText);
+  return out;
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => (t.style.display = 'none'), 5000);
+}
+// Replace a section only when its HTML changed, so scroll positions, open <details> and text boxes survive polling.
+const last = {};
+function put(id, html) { if (last[id] === html) return; last[id] = html; const el = document.getElementById(id); if (el) el.innerHTML = html; }
+
+function renderMeta(usage, running, max) {
+  const m = (label, v) => v == null ? '' : `<span class="meter hide-sm" title="Claude Max usage, ${label} window">${label} <i><b style="width:${Math.min(100, Math.round(v * 100))}%"></b></i> ${Math.round(v * 100)}%</span>`;
+  put('meta', `${m('5h', usage?.five_hour)}${m('7d', usage?.seven_day)}<span>${running}/${max} running</span>`);
+}
+
+// Minimal Markdown for report.md: headings, paragraphs, lists, tables, **bold**, `code`.
+function md(src) {
+  const inline = (s) => s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  let html = '', table = false, list = false;
+  for (const l of esc(src).split('\n')) {
+    if (l.startsWith('|')) {
+      if (/^\|[-\s|]+\|$/.test(l)) continue;
+      if (!table) { html += '<table>'; table = true; }
+      const cells = l.slice(1, -1).split(/(?<!\\)\|/).map((c) => inline(c.trim().replace(/\\\|/g, '|')));
+      html += `<tr>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+      continue;
+    } else if (table) { html += '</table>'; table = false; }
+    if (l.startsWith('- ')) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(l.slice(2))}</li>`; continue; }
+    else if (list) { html += '</ul>'; list = false; }
+    const h = l.match(/^(#{1,3}) (.*)/);
+    if (h) html += `<h${h[1].length + 2}>${inline(h[2])}</h${h[1].length + 2}>`;
+    else if (l.trim()) html += `<p>${inline(l)}</p>`;
+  }
+  return html + (table ? '</table>' : '') + (list ? '</ul>' : '');
+}
+
+/* ---------- home ---------- */
+function jobCard(j) {
+  const eta = ACTIVE.includes(j.state) && j.eta_s ? ` · ETA ~${dur(j.eta_s)}` : '';
+  const tasks = j.tasks_total ? ` · ${j.tasks_done}/${j.tasks_total} tasks` : '';
+  const bar = ACTIVE.includes(j.state) || j.state === 'awaiting_approval' ? `<div class="bar"><b style="width:${Math.round((j.progress || 0) * 100)}%"></b></div>` : '';
+  return `<a class="card job" href="#/job/${esc(j.id)}">
+    <div class="row">${pill(j.state, j.queue ? ` #${j.queue}` : '')}<span class="muted">${esc(j.project)} · ${dur(j.elapsed_s)}${eta}${tasks}</span></div>
+    <div class="prompt">${esc(j.prompt)}</div>
+    ${j.message && !ACTIVE.includes(j.state) ? `<div class="muted">${esc(j.message)}</div>` : ''}${bar}</a>`;
+}
+
+async function home(first) {
+  const st = await api('GET', '/api/state');
+  renderMeta(st.usage, st.running, st.max_jobs);
+  document.title = 'AI Devbox';
+  if (first) {
+    $('#app').innerHTML = `
+      <section class="card">
+        <h2>New job</h2>
+        <form id="new">
+          <label>Project<select name="project">${st.projects.map((p) => `<option value="${esc(p.name)}">${esc(p.name)} (${esc(p.type)}${p.approve_plan ? ', you approve the plan' : ''}${p.push ? '' : ', not pushed'})</option>`).join('')}</select></label>
+          <label>What should change?<textarea name="prompt" required placeholder="e.g. Add an About page at /about and link to it from the home page"></textarea></label>
+          <div class="row"><button class="primary">Start job</button><span class="hint">Up to ${st.max_jobs} run at once, one per project; the rest wait in the queue.</span></div>
+        </form>
+      </section>
+      <h2 class="section">Jobs</h2><div id="jobs"></div>`;
+    const saved = sessionStorage.getItem('draft');
+    if (saved) $('#new').prompt.value = saved;
+    $('#new').prompt.addEventListener('input', (e) => sessionStorage.setItem('draft', e.target.value));
+    $('#new').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target, btn = $('button', f);
+      btn.disabled = true;
+      try {
+        const j = await api('POST', '/api/jobs', { project: f.project.value, prompt: f.prompt.value });
+        sessionStorage.removeItem('draft');
+        location.hash = `#/job/${j.id}`;
+      } catch (err) { toast(err.message); btn.disabled = false; }
+    });
+  }
+  put('jobs', st.jobs.map(jobCard).join('') || '<p class="muted">No jobs yet.</p>');
+  return st.jobs.some((j) => ACTIVE.includes(j.state));
+}
+
+/* ---------- job ---------- */
+const ICON = { done: '✓', skipped: '–', running: '▶', waiting: '⏸', failed: '✗', cancelled: '■', pending: '·' };
+const STAGE_NAME = { setup: 'Setup', plan: 'Plan', review: 'Review', approve: 'Approval', execute: 'Build', preview: 'Preview', test: 'Test', verify: 'Verify', publish: 'Push' };
+
+function timeline(j) {
+  const rows = [];
+  const d = (x) => (x.started_at ? secs(x.started_at, x.ended_at) : null);
+  const items = [];
+  for (const s of Object.keys(STAGE_NAME)) {
+    const st = j.stages[s];
+    items.push({ name: STAGE_NAME[s], state: st.state, secs: ['done', 'running', 'failed'].includes(st.state) ? d(st) : null, note: st.state === 'skipped' ? st.note : st.state === 'waiting' ? 'waiting for you' : '' });
+    if (s === 'execute') for (const t of j.tasks) items.push({ sub: true, name: `${t.id} ${t.title}`, state: t.state, secs: t.state === 'pending' ? null : d(t), note: t.state === 'pending' ? `est ${t.estimate_min}m` : '' });
+  }
+  const max = Math.max(1, ...items.map((i) => i.secs || 0));
+  for (const i of items) {
+    const w = i.secs ? Math.max(2, Math.round((i.secs / max) * 100)) : 0;
+    rows.push(`<span class="ico ${esc(i.state)}">${ICON[i.state] || '·'}</span>
+      <span class="name ${i.sub ? 'sub' : ''}" title="${esc(i.note)}">${esc(i.name)}${i.note && !i.sub ? ` <span class="muted">· ${esc(i.note)}</span>` : ''}</span>
+      <span class="bar ${i.state === 'running' ? 'running' : ''}"><b style="width:${i.state === 'running' ? Math.max(w, 6) : w}%"></b></span>
+      <span class="dur">${i.secs != null ? dur(i.secs) : i.sub ? esc(i.note) : ''}</span>`);
+  }
+  return `<h2>Timeline</h2><div class="tl">${rows.join('')}</div>`;
+}
+
+function planHtml(j) {
+  const p = j.plan;
+  if (!p) return '';
+  const waiting = j.state === 'awaiting_approval';
+  const r = j.review;
+  return `<details ${waiting ? 'open' : ''}><summary>Plan · ${p.tasks.length} task${p.tasks.length > 1 ? 's' : ''}${r ? ` · reviewer ${r.approved ? 'approved' : 'corrected it'}` : ''}</summary>
+    <p>${esc(p.summary)}</p>
+    ${p.tasks.map((t) => `<div class="task"><strong>${esc(t.id)}. ${esc(t.title)}</strong> <span class="muted">~${esc(t.estimate_min)} min</span>
+      <div class="muted">${t.files.map((f) => `<code>${esc(f)}</code>`).join(' ')}</div>
+      <ul>${t.steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>
+      <div class="muted">Check: <code>${esc(t.verify_cmd)}</code></div></div>`).join('')}
+    ${p.snapshots.length ? `<p class="muted">Screenshots: ${p.snapshots.map((s) => `<code>${esc(s.path)}</code>${s.login ? ' (login)' : ''}`).join(' ')}</p>` : ''}
+    ${p.risks.length ? `<h2 style="margin-top:12px">Risks</h2><ul>${p.risks.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${r && r.issues.length ? `<h2 style="margin-top:12px">Reviewer notes</h2><ul>${r.issues.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    ${waiting ? `<div class="row" style="margin-top:12px"><button class="primary" data-act="approve">Approve plan</button><button data-act="edit">Edit plan</button><button class="danger" data-act="reject">Reject</button></div>` : ''}
+  </details>`;
+}
+
+function actions(j) {
+  const b = [];
+  if (j.preview_url) b.push(`<a class="btn primary" href="${esc(j.preview_url)}" target="_blank" rel="noopener">Open preview ↗</a>`);
+  if (ACTIVE.includes(j.state)) b.push('<button class="danger" data-act="cancel">Cancel</button>');
+  if (['needs_you', 'failed', 'interrupted', 'cancelled'].includes(j.state)) b.push('<button class="primary" data-act="retry">Retry</button>');
+  if (!ACTIVE.includes(j.state) && j.state !== 'discarded' && j.state !== 'awaiting_approval') b.push('<button data-act="takeover">Take over</button>');
+  if (!ACTIVE.includes(j.state) && j.state !== 'discarded') b.push('<button class="danger" data-act="discard">Discard</button>');
+  return b.length ? `<div class="row">${b.join('')}</div>` : '';
+}
+
+async function job(first, id) {
+  const [j, log] = await Promise.all([api('GET', `/api/jobs/${id}`), api('GET', `/api/jobs/${id}/log?lines=300`)]);
+  if (first) {
+    $('#app').innerHTML = `<p><a href="#/">← All jobs</a></p>
+      <section class="card"><div id="head"></div><div id="actions"></div></section>
+      <section class="card" id="plan"></section>
+      <section class="card" id="shots"></section>
+      <section class="card report" id="report"></section>
+      <section class="card" id="timeline"></section>
+      <section class="card"><h2>Log</h2><pre class="log" id="log"></pre></section>`;
+  }
+  document.title = `${STATE[j.state] || j.state} · ${j.prompt.slice(0, 40)} · AI Devbox`;
+  const pct = Math.round((j.progress || 0) * 100);
+  const eta = ACTIVE.includes(j.state) && j.eta_s ? `<span>ETA <b>~${dur(j.eta_s)}</b></span>` : '';
+  put('head', `<div class="row">${pill(j.state, j.queue ? ` #${j.queue} in queue` : '')}<span class="muted">${esc(j.project)}${j.stage && ACTIVE.includes(j.state) ? ` · ${esc(STAGE_NAME[j.stage] || j.stage)}` : ''}</span></div>
+    <h1>${esc(j.prompt)}</h1>
+    <div class="muted"><code class="kbd">${esc(j.branch)}</code>${j.base ? ` from <code class="kbd">${esc(j.base)}</code>` : ''}${j.approved_by ? ` · approved by ${esc(j.approved_by)}` : ''}</div>
+    <div class="stats"><span>Elapsed <b>${dur(j.elapsed_s)}</b></span>${eta}<span><b>${pct}%</b></span>${j.tasks.length ? `<span>Tasks <b>${j.tasks.filter((t) => t.state === 'done').length}/${j.tasks.length}</b></span>` : ''}</div>
+    <div class="bar ${j.state === 'done' ? 'done' : ''}"><b style="width:${pct}%"></b></div>
+    ${j.message ? `<div class="banner ${esc(j.state)}">${esc(j.message)}</div>` : ''}`);
+  put('actions', `<div style="margin-top:12px">${actions(j)}</div>`);
+  if (!editing) put('plan', planHtml(j));
+  $('#plan').style.display = j.plan ? '' : 'none';
+  put('shots', j.shots.length ? `<h2>Screenshots</h2><div class="shots">${j.shots.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(s.url)}" alt=""><span>${esc(s.path)} · ${esc(s.viewport)} · ${s.status ? 'HTTP ' + esc(s.status) : esc(s.error)}</span></a>`).join('')}</div>` : '');
+  $('#shots').style.display = j.shots.length ? '' : 'none';
+  put('report', j.report ? md(j.report) : '');
+  $('#report').style.display = j.report ? '' : 'none';
+  put('timeline', timeline(j));
+  const pre = $('#log'), atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+  if (pre.textContent !== log) { pre.textContent = log; if (atBottom || first) pre.scrollTop = pre.scrollHeight; }
+  current = j;
+  return ACTIVE.includes(j.state);
+}
+
+let current = null, editing = false;
+async function act(name, btn) {
+  const j = current;
+  if (name === 'edit') return editPlan(j);
+  const ask = { cancel: 'Cancel this job?', reject: 'Reject this plan? The job is cancelled.', discard: 'Discard this job? Its worktree, branch, database and preview are deleted.' }[name];
+  if (ask && !confirm(ask)) return;
+  btn.disabled = true;
+  try {
+    const out = await api('POST', `/api/jobs/${j.id}/${name}`);
+    if (name === 'takeover') showTakeover(out);
+    else toast({ approve: 'Approved. The job continues.', retry: 'Retrying.', cancel: 'Cancelling…', reject: 'Plan rejected.', discard: 'Discarded.' }[name]);
+    refresh();
+  } catch (e) { toast(e.message); btn.disabled = false; }
+}
+
+function editPlan(j) {
+  editing = true;
+  last.plan = null;
+  $('#plan').innerHTML = `<h2>Edit plan</h2><p class="muted">Change tasks, steps or checks, then save and approve. Keep it valid JSON.</p>
+    <textarea class="code" id="planjson" spellcheck="false">${esc(JSON.stringify(j.plan, null, 2))}</textarea>
+    <div class="row" style="margin-top:10px"><button class="primary" id="saveplan">Save plan</button><button id="canceledit">Cancel</button></div>`;
+  $('#canceledit').onclick = () => { editing = false; last.plan = null; refresh(); };
+  $('#saveplan').onclick = async () => {
+    let plan;
+    try { plan = JSON.parse($('#planjson').value); } catch (e) { return toast(`Not valid JSON: ${e.message}`); }
+    try { await api('PUT', `/api/jobs/${j.id}/plan`, { plan }); editing = false; last.plan = null; toast('Plan saved. Approve it to continue.'); refresh(); }
+    catch (e) { toast(e.message); }
+  };
+}
+
+function showTakeover(t) {
+  const d = $('#dlg');
+  d.innerHTML = `<h2>Take over</h2>
+    <p>The job's last Claude session is open in tmux on the server. In the Claude app's Terminal panel, run:</p>
+    <p><code class="kbd">${esc(t.attach)}</code></p>
+    <p class="muted">Detach with Ctrl+B then D; the session keeps running.${t.can_retry ? ' When you are done, press Retry to continue the pipeline.' : ''}</p>
+    <div class="row"><button class="primary" id="copy">Copy command</button><button id="close">Close</button></div>`;
+  $('#copy', d).onclick = () => navigator.clipboard?.writeText(t.attach).then(() => toast('Copied'), () => toast('Copy failed; select the text instead'));
+  $('#close', d).onclick = () => d.close();
+  d.showModal();
+}
+
+/* ---------- router + polling ---------- */
+let timer = null, view = null;
+async function refresh(first = false) {
+  clearTimeout(timer);
+  let active = false;
+  try {
+    active = view.kind === 'home' ? await home(first) : await job(first, view.id);
+    if (view.kind === 'job') {   // the header meter is global; keep it fresh on job pages too
+      const st = await api('GET', '/api/state');
+      renderMeta(st.usage, st.running, st.max_jobs);
+    }
+  } catch (e) {
+    if (first) $('#app').innerHTML = `<div class="card"><p>${esc(e.message)}</p><p><a href="#/">← All jobs</a></p></div>`;
+    else toast(e.message);
+  }
+  timer = setTimeout(refresh, document.hidden ? 15000 : active ? 3000 : 10000);
+}
+function go() {
+  const m = location.hash.match(/^#\/job\/([a-z0-9-]+)/);
+  view = m ? { kind: 'job', id: m[1] } : { kind: 'home' };
+  editing = false;
+  for (const k in last) delete last[k];
+  refresh(true);
+}
+window.addEventListener('hashchange', go);
+$('#app').addEventListener('click', (e) => { const a = e.target.closest('[data-act]'); if (a && view.kind === 'job') act(a.dataset.act, a); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+go();
+</script>
+</body>
+</html>
