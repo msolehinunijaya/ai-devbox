@@ -1,0 +1,17 @@
+{
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git push *)",
+      "Bash(sudo *)",
+      "Bash(su *)",
+      "Bash(glab *)",
+      "Bash(gh *)",
+      "Read(~/.ssh/**)",
+      "Edit(~/.ssh/**)",
+      "Read(/etc/ai-devbox/**)"
+    ]
+  }
+}

@@ -7,3 +7,8 @@ vendor/
 .DS_Store
 .idea/
 .vscode/
+
+# AI Devbox runtime (created by setup.sh, owned by the ai user)
+/run/
+/repos/
+/tools/ms-playwright/

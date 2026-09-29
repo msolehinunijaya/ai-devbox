@@ -16,6 +16,45 @@ Known facts:
   for Max on a server, `--resume <session>`. Remote Control can only **attach to a running session**; it cannot
   start new ones. So a small dashboard starts jobs, and Remote Control is the "take over" door.
 
+## Adjustments after the Phase 0 audit (2026-09-29)
+
+Where this section disagrees with the rest of the plan, this section wins.
+
+**Server facts:** Ubuntu 24.04.5, **1 vCPU**, 2 GB RAM, 4 GB swapfile already present, 35 GB disk free.
+PHP 8.4 CLI+FPM (8.3 is CLI only), nginx 1.24, **MariaDB** 10.11 (buffer pool 128M and performance_schema OFF
+already), Node 22, Claude Code 2.1.284. earlyoom runs and prefers killing `node`. ufw allows only 22, 80, 8081.
+One project on the server: `/var/www/kkdw_v2.0` (owner `dev`, Laravel 13, GitLab). It is the **live site on :80**,
+checked out on a feature branch with uncommitted work, and its DB is Cloud SQL via a proxy on 127.0.0.1:3307.
+An earlier pipeline (`/ship`, `~/.claude/ai-pipeline/`) exists; it stays until the dashboard works.
+
+**Changes:**
+1. Everything lives in `/var/www/ai-devbox` (git repo on the server, root-owned). Runtime data goes in git-ignored
+   `run/` and `repos/`, owned by `ai`. The agent can't edit the runner.
+2. The runner keeps **its own clone per project** in `repos/` (cloned with `ai`'s SSH key) and makes worktrees from
+   there. The user's checkouts and the live site are never touched.
+3. Preview DB = **local MariaDB** `ai_<job>`, never Cloud SQL. MariaDB user `ai` authenticates by unix socket
+   (no password) and only has rights on `ai\_%`. Preview `.env` is built from `.env.example` (no secrets), never
+   copied from the real `.env`. Cache/session = file, queue = sync, mail = log.
+4. PHP-FPM pool `[ai]` goes on the existing **php8.4-fpm** (runs as `ai`, `pm=ondemand`, max 4 children).
+5. Swapfile and MariaDB tuning already done. Only swappiness 60 → 10.
+6. `vendor/` is **copied with hard links**, never symlinked (Composer resolves the app root from vendor's real
+   path); `vendor/composer/` gets a real copy because Composer rewrites it. `node_modules/` may be symlinked.
+7. Reuse from `/ship`: project-type detection, dependency logic, and `snap.mjs` (desktop + mobile screenshots)
+   instead of a new `shot.js`. Playwright lives in `tools/`, browsers in `tools/ms-playwright`.
+8. ufw: `allow in on tailscale0`, so dashboard and previews are reachable over Tailscale only.
+9. earlyoom: the dashboard sets its process name to `ai-dashboard`, which is on earlyoom's avoid list, and its
+   systemd unit lowers its OOM score. Build steps (`node`) stay the preferred victims.
+10. 1 vCPU: MAX_JOBS stays 2, but the heavy-step lock matters more. Interactive Claude sessions (~315 MB each)
+    count against the same RAM.
+11. **Plan approval gate**: per-project switch. When on, the job pauses after Review with Approve / Edit / Cancel.
+    On for kkdw (its CLAUDE.md requires a human-approved technical plan), off otherwise.
+12. Agent deny rules also cover `glab` and `gh`.
+13. CLI: `--session-id <uuid>` chosen by the runner, `--json-schema` for plan/review output,
+    `--permission-prompts none` so a headless job can't hang. Take over = `claude --resume <id> --remote-control`
+    in tmux (confirm in Phase 2; fallback `--bg` + `claude attach`). Never `--bare` (API-key only).
+14. Test projects: `kkdw_v2.0` replaces `kkdw_2026`; `ursb-ai` must be cloned before Phase 4.
+15. `ai` runs Claude from `/usr/local/bin/claude` (hard link to root's install, auto-update off); `setup.sh` refreshes it.
+
 ## Your questions, answered
 
 **Should I install Docker?** No, not on 2 GB. Docker would run PHP + MySQL per project; three containers eat the
@@ -71,18 +110,18 @@ to 4 GB (+$12/mo) is the cheapest speed-up.
 `ETA = Σ(pending task estimates) × (actual/estimated ratio of finished tasks) + constants for remaining stages`.
 The first ETA is the planner's guess and gets more accurate as tasks finish.
 
-## Files to create (source in a new local git repo, e.g. `C:\laragon\www\ai-devbox`, copied to `/srv/ai`)
+## Files to create (in `/var/www/ai-devbox`, the git repo on the server)
 
 - `server.js`: HTTP API + static files + job queue (MAX_JOBS=2, 1 per project) + stage runner (spawns `claude -p`,
   parses stream-json, captures session_id, writes status.json). On restart, running jobs are marked "interrupted".
 - `index.html`: vanilla JS dashboard. **Start page:** project picker (git dirs in PROJECTS_DIR) + prompt + Start; job list.
   **Job page:** progress bar, elapsed/ETA, timeline bars per stage/task, live log tail, screenshot grid, preview link,
   report, and buttons Take over / Cancel / Retry / Discard (removes worktree, DB, branch).
-- `shot.js`: about 30 lines of Playwright: goto each URL, optional /login form fill, fullPage screenshot.
+- `tools/snap.mjs`: the `/ship` screenshot script (desktop + mobile), extended with an optional /login form fill.
 - `prompts/{plan,review,execute,verify}.md`: stage instructions + output contract.
 - `setup.sh`: one-time idempotent setup: swap, `ai` user, Tailscale, FPM pool `[ai]`, MySQL tuning, Playwright
   Chromium, `ai` user's `~/.claude/settings.json` deny rules (`git push`, `sudo`, `~/.ssh`).
-- `nginx-ai.conf`: wildcard preview server bound to the Tailscale IP, root `/srv/ai/docroot/$job` (symlink to `public/` or repo root).
+- `nginx-ai.conf`: wildcard preview server bound to the Tailscale IP, root `/var/www/ai-devbox/run/docroot/$job` (symlink to `public/` or repo root).
 - `ai-dashboard.service`: systemd unit, `EnvironmentFile` (chmod 600) holding `CLAUDE_CODE_OAUTH_TOKEN`.
 
 **Take over:** `tmux new -d "cd <worktree> && claude --resume <sid>"` with Remote Control enabled. The job then shows up in your
