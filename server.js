@@ -41,7 +41,8 @@ function whois(ip) {
 function summary(j) {
   return {
     id: j.id, project: j.project, prompt: j.prompt, state: j.state, stage: j.stage, message: j.message,
-    created_at: j.created_at, elapsed_s: j.elapsed_s, eta_s: j.eta_s, progress: j.progress,
+    created_at: j.created_at, ended_at: j.ended_at, elapsed_s: j.elapsed_s, eta_s: j.eta_s, progress: j.progress,
+    stages: Object.fromEntries(Job.STAGES.map((s) => [s, j.stages[s].state])),
     preview_url: j.preview_url, verdict: j.verdict, queue: Ops.queuePosition(j), archived_at: j.archived_at || null,
     tokens: Job.tokenCount(j.tokens?.total), cost_usd: j.tokens?.total.cost_usd || 0,
     tasks_done: j.tasks.filter((t) => t.state === 'done').length, tasks_total: j.tasks.length,
