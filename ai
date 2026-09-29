@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# AI Devbox CLI. Always runs as the unprivileged ai user; as root it loads the Claude token first.
+# Usage: ./ai <command> ...   (./ai with no arguments lists the commands)
+set -euo pipefail
+ROOT="$(dirname "$(readlink -f "$0")")"
+if [ "$(id -un)" != ai ]; then
+  [ "$(id -u)" = 0 ] || { echo "Run as root or as the ai user." >&2; exit 1; }
+  set -a; . /etc/ai-devbox/claude.env; set +a
+  exec sudo --preserve-env=CLAUDE_CODE_OAUTH_TOKEN -u ai -H "$ROOT/ai" "$@"
+fi
+cd "$ROOT/run"
+exec node "$ROOT/cli.js" "$@"

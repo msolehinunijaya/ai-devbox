@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "tasks", "fixed", "summary", "followups"],
+  "properties": {
+    "verdict": { "enum": ["pass", "fail"] },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "note"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "enum": ["pass", "partial", "fail"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+    "fixed": { "type": "boolean" },
+    "summary": { "type": "string" },
+    "followups": { "type": "array", "items": { "type": "string" } }
+  }
+}

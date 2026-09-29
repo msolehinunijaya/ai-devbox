@@ -1,0 +1,14 @@
+{
+  "kkdw": {
+    "source": "/var/www/kkdw_v2.0",
+    "remote": "git@gitlab.com:developer-unijaya/claudecode/kkdw_v2.0.git",
+    "base": "main",
+    "type": "laravel",
+    "approve_plan": true,
+    "push": false,
+    "deps_from": "/var/www/kkdw_v2.0",
+    "env": { "BRS_LOGIN_ENABLED": "false" },
+    "tests": ["php artisan test"],
+    "snapshots": ["/"]
+  }
+}

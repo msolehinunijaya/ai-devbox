@@ -1,0 +1,7 @@
+{
+  "name": "ai-devbox",
+  "private": true,
+  "type": "module",
+  "description": "One prompt -> plan -> review -> build -> test -> preview, on this server",
+  "engines": { "node": ">=22" }
+}

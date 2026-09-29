@@ -30,6 +30,13 @@ grep -q '/opt/ai-devbox/bin' "$AI_HOME/.profile" 2>/dev/null \
   || echo 'PATH="/opt/ai-devbox/bin:$PATH"' >> "$AI_HOME/.profile"
 install -d -o "$AI" -g "$AI" -m 700 "$AI_HOME/.claude"
 install -o "$AI" -g "$AI" -m 644 config/claude-settings.json "$AI_HOME/.claude/settings.json"
+# Skip the first-run screens (theme, login method) so take-over sessions start straight away.
+sudo -u "$AI" -H node -e '
+  const f = process.env.HOME + "/.claude.json", fs = require("fs");
+  let j = {}; try { j = JSON.parse(fs.readFileSync(f, "utf8")); } catch {}
+  j.hasCompletedOnboarding = true; j.theme = j.theme || "dark";
+  fs.writeFileSync(f, JSON.stringify(j, null, 2), { mode: 0o600 });'
+chmod 755 ai cli.js
 
 log "SSH key and git identity for $AI"
 install -d -o "$AI" -g "$AI" -m 700 "$AI_HOME/.ssh"
@@ -87,6 +94,7 @@ else
   ln -sf /etc/nginx/sites-available/ai-devbox /etc/nginx/sites-enabled/ai-devbox
   nginx -t 2>&1 | tail -1
   systemctl reload nginx
+  printf '{ "ts_ip": "%s", "domain": "%s.sslip.io" }\n' "$TS_IP" "${TS_IP//./-}" > "$ROOT/run/host.json"
   echo "Previews: http://<job>.${TS_IP//./-}.sslip.io"
 fi
 
