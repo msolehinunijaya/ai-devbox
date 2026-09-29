@@ -53,7 +53,13 @@ An earlier pipeline (`/ship`, `~/.claude/ai-pipeline/`) exists; it stays until t
     `--permission-prompts none` so a headless job can't hang. Take over = `claude --resume <id> --remote-control`
     in tmux (confirm in Phase 2; fallback `--bg` + `claude attach`). Never `--bare` (API-key only).
 14. Test projects: `kkdw_v2.0` replaces `kkdw_2026`; `ursb-ai` must be cloned before Phase 4.
-15. `ai` runs Claude from `/usr/local/bin/claude` (hard link to root's install, auto-update off); `setup.sh` refreshes it.
+15. `ai` runs Claude from `/opt/ai-devbox/bin/claude` (hard link to root's install, auto-update off); `setup.sh` refreshes it.
+16. **Take over (Phase 2 finding):** Remote Control needs a full-scope login; `claude setup-token` tokens are
+    inference-only. v1 take-over = `./ai takeover <job>` opens the job's last session in tmux, attached from the
+    Terminal panel (`sudo -u ai -i tmux attach -t <job>`). Take-over from the phone needs `claude auth login`
+    for the `ai` user, which leaves full-scope credentials readable by agent processes: decide before enabling.
+17. Pipeline tests use a throwaway Laravel 13 app (`sandbox`, source `repos/_src/sandbox`, no gate, no push).
+    kkdw stays registered but unused until you want it.
 
 ## Your questions, answered
 

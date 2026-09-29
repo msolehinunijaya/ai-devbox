@@ -213,7 +213,8 @@ const commands = {
       if (r.code) die(`tmux failed: ${r.out}`);
     }
     Job.log(job, `⇄ taken over (session ${sid})`);
-    console.log(`Session ${sid} is open in tmux session "${id}".\nAttach from the Terminal panel:\n\n  sudo -u ai -i tmux attach -t ${id}\n\nDetach with Ctrl+B then D. When done, ./ai retry ${id} continues the pipeline.`);
+    const next = Job.FINISHED.includes(job.state) ? '' : ` When done, ./ai retry ${id} continues the pipeline.`;
+    console.log(`Session ${sid} is open in tmux session "${id}".\nAttach from the Terminal panel:\n\n  sudo -u ai -i tmux attach -t ${id}\n\nDetach with Ctrl+B then D.${next}`);
   },
 
   async projects() { for (const n of projectNames()) console.log(n); },

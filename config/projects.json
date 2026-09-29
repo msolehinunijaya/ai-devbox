@@ -7,8 +7,28 @@
     "approve_plan": true,
     "push": false,
     "deps_from": "/var/www/kkdw_v2.0",
-    "env": { "BRS_LOGIN_ENABLED": "false" },
-    "tests": ["php artisan test"],
-    "snapshots": ["/"]
+    "env": {
+      "BRS_LOGIN_ENABLED": "false"
+    },
+    "tests": [
+      "php artisan test"
+    ],
+    "snapshots": [
+      "/"
+    ]
+  },
+  "sandbox": {
+    "source": "/var/www/ai-devbox/repos/_src/sandbox",
+    "base": "main",
+    "type": "laravel",
+    "approve_plan": false,
+    "push": false,
+    "deps_from": "/var/www/ai-devbox/repos/_src/sandbox",
+    "tests": [
+      "php artisan test"
+    ],
+    "snapshots": [
+      "/"
+    ]
   }
 }
