@@ -31,6 +31,8 @@ Previews: `http://<job>.100-103-68-10.sslip.io/`, served by PHP-FPM as `ai`, on 
 
 ## A job
 
+The full flow, with what the AI does and every fallback, is in [docs/FLOW.md](docs/FLOW.md).
+
 | Stage | Who | What |
 |---|---|---|
 | setup | runner | worktree on `ai/<job>` from the latest base, dependencies (hard-linked `vendor/`, shared `node_modules/`), `.env` from `.env.example` |
