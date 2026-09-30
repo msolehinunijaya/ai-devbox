@@ -13,6 +13,8 @@ over Tailscale. See [PLAN.md](PLAN.md) for the design, decisions and measurement
 **Dashboard:** open `http://claude-dev/` (or `http://100.103.68.10/`) from a device on your tailnet.
 Start a job, watch the timeline, approve plans, open previews, take over a session.
 
+**Claude Code:** in a Claude Code session opened on `/var/www/ai-devbox`, type `/devbox` (e.g. `/devbox start test "add a tasks page"`, `/devbox status`, `/devbox retry <job>`). Claude runs the CLI below and explains the result. See `.claude/skills/devbox/SKILL.md`.
+
 **Command line** (on the server, as root or `ai`):
 
 ```
